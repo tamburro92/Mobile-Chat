@@ -8,7 +8,7 @@ import java.util.Map;
 
 
 public class Server {
-	public final static int PORT = 1677;
+	public final static int PORT = 1676;
 
 	public static void main(String[] args) throws IOException {
 		Map<String,ThreadedServerSocket> usersOnline=new HashMap<String,ThreadedServerSocket>();

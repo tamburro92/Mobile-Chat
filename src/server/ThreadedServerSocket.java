@@ -6,6 +6,8 @@ import java.io.InputStreamReader;
 import java.io.OutputStreamWriter;
 import java.io.PrintWriter;
 import java.net.Socket;
+import java.util.LinkedList;
+import java.util.List;
 import java.util.Map;
 import org.json.*;
 
@@ -17,10 +19,13 @@ public class ThreadedServerSocket extends Thread {
 	private Map<String, ThreadedServerSocket> usersOnline;
 	private BufferedReader reader;
 	private PrintWriter writer;
+	private String userName;
+	private List<JSONObject> messageToSyn;
 
 	public ThreadedServerSocket(Socket s, Map<String, ThreadedServerSocket> usersOnline) {
 		this.socket = s;
 		this.usersOnline = usersOnline;
+		this.messageToSyn=new LinkedList<JSONObject>();
 
 	}
 
@@ -30,7 +35,12 @@ public class ThreadedServerSocket extends Thread {
 			writer = new PrintWriter(new OutputStreamWriter(socket.getOutputStream(), "UTF-8"));
 
 			while (true) {
-				JSONObject message = new JSONObject(reader.readLine());
+				String messageString=reader.readLine();
+				if(messageString==null){ //se il client non fa il logout ed esce	
+					socket.close();
+					return;
+				}
+				JSONObject message = new JSONObject(messageString);
 				System.out.println("SERVER RECEIVE: "+message);
 
 				String typeOperation = message.getString(Code.TYPE_MESSAGE);
@@ -40,22 +50,27 @@ public class ThreadedServerSocket extends Thread {
 					login(message);
 					break;
 				case Code.LOGOUT:
-					// fare login
+					logout();
 					break;
 				case Code.ONLINE_USERS:
-
+					listUsersOnline();
 					break;
-
-				}
-			}
+				case Code.SEND_MESSAGE:
+					sendMessageToOtherUsers(message);
+					break;
+			    case Code.MESSAGES_SYNC:
+				   syncOldMessage();
+				break;
+				}}
+			
 		} catch (IOException e) {
 			System.out.println("ECCEZIONE IOException");
 
-			e.printStackTrace();
+			//e.printStackTrace();
 		} catch (JSONException e) {
 			System.out.println("ECCEZIONE JSON");
 			// TODO Auto-generated catch block
-			e.printStackTrace();
+			//e.printStackTrace();
 		} finally {
 			try {
 				socket.close();
@@ -65,11 +80,51 @@ public class ThreadedServerSocket extends Thread {
 
 	}
 
-	private JSONObject readJson(BufferedReader read) throws IOException, JSONException {
-		JSONObject json = new JSONObject(read.readLine());
-		return json;
-
+	private void syncOldMessage() {
+		JSONArray response=new JSONArray();
+		response.put(this.messageToSyn);
+		this.messageToSyn.clear();
+		
+		System.out.println("SERVER SEND: "+response);
+	
+		writer.println(response);
+		writer.flush();
+			
+	
+		
 	}
+
+	private void sendMessageToOtherUsers(JSONObject message) throws JSONException {		
+		JSONArray receivers = message.getJSONArray(Code.RECEIVERS);
+		for(int i=0;i<receivers.length();i++){
+			String user=receivers.getString(i);
+			if(this.usersOnline.containsKey(user)){
+				ThreadedServerSocket socketUser = this.usersOnline.get(user);
+				socketUser.saveMessageToSync(message.getString(Code.SENDER),message.getString(Code.MESSAGE));
+				}
+		}
+	}
+	public void saveMessageToSync(String sender,String message) throws JSONException{
+		JSONObject response = new JSONObject();
+		response.put(Code.TYPE_MESSAGE, Code.SEND_MESSAGE );
+		response.put(Code.SENDER, sender); 
+		response.put(Code.MESSAGE, message); 
+		System.out.println("SERVER SEND: "+response);
+		messageToSyn.add(response);
+		
+	}
+
+	private void listUsersOnline() throws JSONException {
+		JSONObject response = new JSONObject();
+		response.put(Code.TYPE_MESSAGE, Code.ONLINE_USERS);
+		response.put(Code.USERS, this.usersOnline.keySet()); 
+		
+		System.out.println("SERVER SEND: "+response);
+		writer.println(response);
+		writer.flush();
+		
+	}
+
 
 	private void login(JSONObject message) throws JSONException {
 		String name = message.getString(Code.USER_NAME);
@@ -78,11 +133,29 @@ public class ThreadedServerSocket extends Thread {
 		if (usersOnline.containsKey(name)) {
 			response.put(Code.STATUS, Code.FAILED);
 		} else {
+			this.usersOnline.put(name, this);
 			response.put(Code.STATUS, Code.SUCCESS);
-
+			this.userName=name;
 		}
+		System.out.println("SERVER SEND: "+response);
+
 		writer.println(response);
 		writer.flush();
+	}
+	private void logout() throws JSONException, IOException {
+		//String name = message.getString(Code.USER_NAME);
+		JSONObject response = new JSONObject();
+		response.put(Code.TYPE_MESSAGE, Code.LOGOUT);
+		if (usersOnline.containsKey(this.userName))
+			usersOnline.remove(this.userName);
+		
+	    response.put(Code.STATUS, Code.SUCCESS);
+		System.out.println("SERVER SEND: "+response);
+
+		writer.println(response);
+		writer.flush();
+		
+		this.socket.close();
 	}
 
 }
