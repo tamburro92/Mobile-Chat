@@ -61,21 +61,22 @@ public class ThreadedServerSocket extends Thread {
 					break;
 				}
 			}
+			Thread.sleep(300);
 
 		} catch (IOException e) {
-			System.out.println("ECCEZIONE IOException");
+			System.out.println("Client Disconnesso Improvvisamente");
 
 			// e.printStackTrace();
 		} catch (JSONException e) {
-			System.out.println("ECCEZIONE JSON");
+			System.out.println("ECCEZIONE formato messaggi");
 			// TODO Auto-generated catch block
 			// e.printStackTrace();
 		} 
 		catch(NullPointerException e){//si verifica quando il client si disconnette senza fare il logout   
 			//ed la reader.readLine() del server restituisce NULL
-			System.out.println("ECCEZIONE NullPointerException");
+			System.out.println("Client Disconnesso Improvvisamente");
 
-		}
+		}catch(InterruptedException e){}
 		finally {
 			try {//LOGOUT e CLOSE SOCKET
 				if (usersOnline.containsKey(this.userName))

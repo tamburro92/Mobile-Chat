@@ -30,6 +30,7 @@ import protocol.Code;
 import javax.swing.JLabel;
 import javax.swing.JTabbedPane;
 import javax.swing.JToolBar;
+import javax.swing.Timer;
 import javax.swing.JPanel;
 import java.awt.GridLayout;
 import java.awt.GridBagLayout;
@@ -40,6 +41,8 @@ import java.awt.Color;
 import javax.swing.AbstractListModel;
 import javax.swing.JScrollPane;
 import javax.swing.JTextPane;
+import javax.swing.JScrollBar;
+import javax.swing.ScrollPaneConstants;
 
 public class ClientUI {
 
@@ -53,7 +56,7 @@ public class ClientUI {
 	private JPanel loginPanel;
 	private JPanel usersPanel;
 	private JTextField warningField;
-	private JList usersOnlinelist;
+	private JList<String> usersOnlinelist;
 	private JButton btnSendMessage;
 	private JPanel messagesPanel;
 	private JTextPane messagesPane;
@@ -65,6 +68,10 @@ public class ClientUI {
 	private JButton btnRefreshMessage;
 	private JButton btnLogout;
 	private JLabel lblSelectOneOr;
+
+	Timer timerUpdateListUser;
+	Timer timerUpdateMessage;
+	private JScrollPane scrollPane;
 
 	/**
 	 * Launch the application.
@@ -88,6 +95,7 @@ public class ClientUI {
 	 */
 	public ClientUI() {
 		initialize();
+		initTimer();
 	}
 
 	/**
@@ -143,16 +151,21 @@ public class ClientUI {
 		btnLogout = new JButton("LOGOUT");
 		btnLogout.addActionListener(new ActionListener() {
 			public void actionPerformed(ActionEvent e) {
-				tabbedPane.setEnabledAt(1,true);
-				tabbedPane.setEnabledAt(2,true);
-
+				tabbedPane.setEnabledAt(1, false);
+				tabbedPane.setEnabledAt(2, false);
+				timerUpdateMessage.stop();
+				timerUpdateListUser.stop();
 				try {
 					client.logout();
 					warningField.setText("LOGOUT: SUCCESS");
-				} catch (JSONException | IOException|NullPointerException e1) {
-					warningField.setText("LOGOUT: ERROR");
-					// TODO Auto-generated catch block
-					//e1.printStackTrace();
+				} catch (JSONException e1) {
+
+				} catch (IOException e1) {
+					warningField.setText("ERRORE I/0");
+				} catch (NullPointerException e1) { // può essere sollevata
+													// quando il client non è
+													// stato creato
+					warningField.setText("ESEGUI IL LOGIN!!!");
 				}
 			}
 		});
@@ -160,31 +173,34 @@ public class ClientUI {
 		loginPanel.add(btnLogout);
 		btnLogin.addActionListener(new ActionListener() {
 			public void actionPerformed(ActionEvent arg0) {
-				String ip = ipField.getText();
-				int port = Integer.parseInt(portField.getText());
-				String userName = userField.getText();
+
 				try {
-					client = new Client("localhost", port);
+					String ip = ipField.getText();
+					int port = Integer.parseInt(portField.getText());
+					String userName = userField.getText();
+					client = new Client(ip, port);
 					client.login(userName);
+					if (client.isLogged()) {
+						usersPanel.setEnabled(true);
+						tabbedPane.setEnabledAt(1, true);
+						timerUpdateListUser.start();// start timer to update
+													// list user automatically
+						warningField.setText("LOGIN SUCCESS, Username: " + userName);
+					} else {
+						warningField.setText("LOGIN FAILED, Username: " + userName);
 
-				} catch (UnknownHostException|ConnectException e) {
-					warningField.setText("SERVER OFFLINE");
-					System.out.println(ip + " " + port);
-					//e.printStackTrace();
+					}
+
+				} catch (UnknownHostException | ConnectException e) {
+					warningField.setText("SERVER OFFLINE " + ipField.getText() + ":" + portField.getText());
+
 				} catch (IOException e) {
-					warningField.setText("ERRORE");
-					// TODO Auto-generated catch block
-					//e.printStackTrace();
-				} catch (JSONException e) {
-					
+					warningField.setText("ERRORE I/0");
 
-				} 
-				if (client.isLogged()) {
-					usersPanel.setEnabled(true);
-					tabbedPane.setEnabledAt(1,true);
-					warningField.setText("LOGIN SUCCESS, Username: " + userName);
-				} else {
-					warningField.setText("LOGIN FAILED, Username: " + userName);
+				} catch (JSONException e) {
+
+				} catch (NumberFormatException e) {
+					warningField.setText("FORMATO PORTA ERRATO " + portField.getText());
 
 				}
 
@@ -197,57 +213,63 @@ public class ClientUI {
 		usersPanel.setLayout(null);
 
 		JButton btnRefreshUsersList = new JButton("Refresh Users");
+		btnRefreshUsersList.setEnabled(false);
+		btnRefreshUsersList.setVisible(false); //BOTTONO CHE DOVRA ESSERE CANCELLATO, DA MANTENRE PER DEBUG
 		btnRefreshUsersList.addActionListener(new ActionListener() {
 			public void actionPerformed(ActionEvent e) {
 				try {
 					java.util.List<String> userOnlineList = client.getUserList();
-					DefaultListModel listModel = new DefaultListModel();
+					DefaultListModel<String> listModel = new DefaultListModel<String>();
 					for (String user : userOnlineList) {
 						listModel.addElement(user);
 					}
 					usersOnlinelist.setModel(listModel);
-				} catch (JSONException | IOException e1) {
-					// TODO Auto-generated catch block
-					e1.printStackTrace();
+				} catch (JSONException e1) {
+
+				} catch (IOException e1) {
+					warningField.setText("ERRORE I/0");
 				}
 			}
 		});
 		btnRefreshUsersList.setBounds(261, 151, 108, 23);
 		usersPanel.add(btnRefreshUsersList);
 
-		usersOnlinelist = new JList();
+		usersOnlinelist = new JList<String>();
+		DefaultListModel<String> listModel = new DefaultListModel<String>();
+		usersOnlinelist.setModel(listModel);
 		usersOnlinelist.setBounds(224, 11, 169, 129);
 		usersPanel.add(usersOnlinelist);
 
 		btnSendMessage = new JButton("Send Message");
 		btnSendMessage.addActionListener(new ActionListener() {
 			public void actionPerformed(ActionEvent e) {
-				destinationUsers = new HashSet();
+				destinationUsers = new HashSet<String>();
 				int[] index = usersOnlinelist.getSelectedIndices();
 				if (index.length == 0) {
 					warningField.setText("NESSUN UTENTE SELEZIONATO");
-				} else if (index.length == 1) {
-					tabbedPane.setEnabledAt(2,true);
-					warningField.setText("CHAT SINGOLA: " + usersOnlinelist.getModel().getElementAt(index[0]));
-					destinationUsers.add((String) usersOnlinelist.getModel().getElementAt(index[0]));
-					lblChatWith.setText("Chath with " + (String) usersOnlinelist.getModel().getElementAt(index[0]));
-					
-				} else if (index.length > 1) {
-					tabbedPane.setEnabledAt(2,true);
-					String users = "";
-					for (int i = 0; i < index.length; i++) {
-						users += " " + usersOnlinelist.getModel().getElementAt(index[i]);
-						destinationUsers.add((String) usersOnlinelist.getModel().getElementAt(index[i]));
-					}
-					lblChatWith.setText("Chath with " + users);
-					warningField.setText("CHAT MULTIPLA: " + users);
+				} else {
+					tabbedPane.setEnabledAt(2, true);
+					timerUpdateMessage.start();
+					if (index.length == 1) {
+						warningField.setText("CHAT SINGOLA: " + usersOnlinelist.getModel().getElementAt(index[0]));
+						destinationUsers.add((String) usersOnlinelist.getModel().getElementAt(index[0]));
+						lblChatWith.setText("Chath with " + (String) usersOnlinelist.getModel().getElementAt(index[0]));
+					} else {
+						String users = "";
+						for (int i = 0; i < index.length; i++) {
+							users += " " + usersOnlinelist.getModel().getElementAt(index[i]);
+							destinationUsers.add((String) usersOnlinelist.getModel().getElementAt(index[i]));
+						}
+						lblChatWith.setText("Chath with " + users);
+						warningField.setText("CHAT MULTIPLA: " + users);
 
+					}
 				}
 			}
 		});
 		btnSendMessage.setBounds(49, 151, 101, 23);
 		usersPanel.add(btnSendMessage);
-		
+
 		lblSelectOneOr = new JLabel("Select one or more users:");
 		lblSelectOneOr.setBounds(70, 61, 130, 23);
 		usersPanel.add(lblSelectOneOr);
@@ -256,11 +278,15 @@ public class ClientUI {
 		tabbedPane.addTab("Chat", null, messagesPanel, null);
 		tabbedPane.setEnabledAt(2, false);
 		messagesPanel.setLayout(null);
+		
+		scrollPane = new JScrollPane();
+		scrollPane.setHorizontalScrollBarPolicy(ScrollPaneConstants.HORIZONTAL_SCROLLBAR_NEVER);
+		scrollPane.setBounds(27, 21, 207, 121);
+		messagesPanel.add(scrollPane);
 
 		messagesPane = new JTextPane();
+		scrollPane.setViewportView(messagesPane);
 		messagesPane.setEditable(false);
-		messagesPane.setBounds(27, 21, 207, 121);
-		messagesPanel.add(messagesPane);
 
 		messageField = new JTextField();
 		messageField.setBounds(27, 153, 207, 20);
@@ -283,6 +309,8 @@ public class ClientUI {
 		messagesPanel.add(lblChatWith);
 
 		btnRefreshMessage = new JButton("Refresh Message");
+		btnRefreshMessage.setVisible(false); //NASCONDIAMO ALL'UTENTE //DA CANCELLARE DOPO 
+		btnRefreshMessage.setEnabled(false);
 		btnRefreshMessage.addActionListener(new ActionListener() {
 			public void actionPerformed(ActionEvent e) {
 				try {
@@ -294,10 +322,12 @@ public class ClientUI {
 						messagesPane.setText(
 								txt + sender + ": " + arrayMSG.getJSONObject(i).getString(Code.MESSAGE) + "\n");
 					}
+				} catch (IOException e1) {
+					warningField.setText("ERRORE I/0");
 
-				} catch (IOException | JSONException e1) {
+				} catch (JSONException e1) {
 					// TODO Auto-generated catch block
-					e1.printStackTrace();
+					/// e1.printStackTrace();
 				}
 			}
 		});
@@ -309,5 +339,62 @@ public class ClientUI {
 		warningField.setBounds(0, 230, 434, 31);
 		frame.getContentPane().add(warningField);
 		warningField.setColumns(10);
+
+	}
+
+	private void initTimer() {
+		timerUpdateListUser = new Timer(1000, new ActionListener() {
+			@Override
+			public void actionPerformed(ActionEvent arg0) {
+				try {
+					java.util.List<String> userOnlineList = client.getUserList();
+					
+					DefaultListModel<String> listModel = (DefaultListModel<String>) usersOnlinelist.getModel();
+					//AGGIORNA LA LISTA DI UTENTI: (tutto questo per non ricreare la lista daccapo e quindi perdere il riferimento
+					//vedi gli elementi da rimuovere 
+					java.util.List<String> elemToRemove=new LinkedList();
+					for(int i=0;i<listModel.size();i++){
+						if(!userOnlineList.contains(listModel.getElementAt(i))){
+							elemToRemove.add(listModel.getElementAt(i));
+						}
+
+					}//elimina gli elementi non online
+					for(String iesim: elemToRemove){
+						listModel.removeElement(iesim);
+					}
+					//aggiungi i nuovi elementi
+					for(String iesim: userOnlineList){
+						if(!listModel.contains(iesim))
+							listModel.addElement(iesim);
+					}
+				} catch (JSONException e1) {
+
+				} catch (IOException e1) {
+					warningField.setText("ERRORE I/0");
+				}
+			}
+		});
+		timerUpdateListUser.setRepeats(true); // Only execute once
+		timerUpdateMessage = new Timer(1000, new ActionListener() {
+			@Override
+			public void actionPerformed(ActionEvent arg0) {
+				try {
+					JSONArray arrayMSG = client.updateMessage();
+					for (int i = 0; i < arrayMSG.length(); i++) {
+						String sender = arrayMSG.getJSONObject(i).getString(Code.SENDER);
+						arrayMSG.getJSONObject(i).get(Code.RECEIVERS);
+						String txt = messagesPane.getText();
+						messagesPane.setText(
+								txt + sender + ": " + arrayMSG.getJSONObject(i).getString(Code.MESSAGE) + "\n");
+					}
+				} catch (IOException e1) {
+					warningField.setText("ERRORE I/0");
+				} catch (JSONException e1) {
+
+				}
+			}
+		});
+		timerUpdateMessage.setRepeats(true);
+
 	}
 }
