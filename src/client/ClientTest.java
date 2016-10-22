@@ -32,10 +32,8 @@ public class ClientTest {
 		Thread.sleep(3000);
 		c1.updateMessage();
 		c1.logout();
-		c1.closeSocket();
 		
 		c2.logout();
-		c2.closeSocket();
 
 	
 	    

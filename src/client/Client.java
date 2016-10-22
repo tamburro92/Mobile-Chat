@@ -37,7 +37,9 @@ public class Client {
 		return userName;
 	}
 	public void login(String username) throws JSONException, IOException {
-		userName = username;
+		if(username.isEmpty())
+			return;
+		this.userName = username;
 		JSONObject request = new JSONObject();
 			request.put(Code.TYPE_MESSAGE, Code.LOGIN);
 			request.put(Code.USER_NAME, username);
@@ -54,7 +56,7 @@ public class Client {
 
 	}
 
-	public void logout() throws JSONException {
+	public void logout() throws JSONException, IOException {
 		JSONObject request = new JSONObject();
 			request.put(Code.TYPE_MESSAGE, Code.LOGOUT);
 			request.put(Code.USER_NAME, this.userName);
@@ -64,7 +66,7 @@ public class Client {
 			writer.flush(); // flush forza l’invio di eventuali buffer in
 							// memoria
 			isLogged=false;
-		
+			socket.close();		
 
 	}
 
