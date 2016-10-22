@@ -15,23 +15,28 @@ public class ClientTest {
 
 	public static void main(String[] args) throws UnknownHostException, IOException, JSONException, InterruptedException {	
 	
+		final int PORT = 1676;
+		final String ip = "localhost";
 
-		Client c1=new Client();
+
+		Client c1=new Client(ip,PORT);
 		c1.login("Arturo");
 		c1.getUserList();
 		
-		Client c2=new Client();
+		Client c2=new Client(ip,PORT);
 		c2.login("Babbala");
 		c2.getUserList();
 		c2.sendsMessage("Arturo", "CIAO AMICO");
 		c2.sendsMessage("Arturo", "HOOLAAAA");
 
-		Thread.sleep(5000);
+		Thread.sleep(3000);
 		c1.updateMessage();
 		c1.logout();
 		c1.closeSocket();
+		
 		c2.logout();
 		c2.closeSocket();
+
 	
 	    
 	    

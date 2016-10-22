@@ -21,6 +21,7 @@ public class ThreadedServerSocket extends Thread {
 	private PrintWriter writer;
 	private String userName;
 	private List<JSONObject> messageToSyn;
+	private boolean clientLogout=false;
 
 	public ThreadedServerSocket(Socket s, Map<String, ThreadedServerSocket> usersOnline) {
 		this.socket = s;
@@ -34,13 +35,9 @@ public class ThreadedServerSocket extends Thread {
 			reader = new BufferedReader(new InputStreamReader(socket.getInputStream(), "UTF-8"));
 			writer = new PrintWriter(new OutputStreamWriter(socket.getOutputStream(), "UTF-8"));
 
-			while (true) {
+			while (!clientLogout) {
 				String messageString = reader.readLine();
-				if (messageString == null) { // se il client non fa il logout ed
-												// esce
-					socket.close();
-					return;
-				}
+				
 				JSONObject message = new JSONObject(messageString);
 				System.out.println("SERVER RECEIVE: " + message);
 
@@ -73,8 +70,16 @@ public class ThreadedServerSocket extends Thread {
 			System.out.println("ECCEZIONE JSON");
 			// TODO Auto-generated catch block
 			// e.printStackTrace();
-		} finally {
-			try {
+		} 
+		catch(NullPointerException e){//si verifica quando il client si disconnette senza fare il logout   
+			//ed la reader.readLine() del server restituisce NULL
+			System.out.println("ECCEZIONE NullPointerException");
+
+		}
+		finally {
+			try {//LOGOUT e CLOSE SOCKET
+				if (usersOnline.containsKey(this.userName))
+					usersOnline.remove(this.userName);
 				socket.close();
 			} catch (IOException e) {
 			}
@@ -155,8 +160,7 @@ public class ThreadedServerSocket extends Thread {
 
 		writer.println(response);
 		writer.flush();
-
-		this.socket.close();
+		clientLogout=true;
 	}
 
 }

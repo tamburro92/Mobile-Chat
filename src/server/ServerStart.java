@@ -7,7 +7,7 @@ import java.util.HashMap;
 import java.util.Map;
 
 
-public class Server {
+public class ServerStart {
 	public final static int PORT = 1676;
 
 	public static void main(String[] args) throws IOException {

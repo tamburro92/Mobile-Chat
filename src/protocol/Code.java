@@ -8,10 +8,7 @@ public final class Code{
 	    public final static String LOGOUT ="LOGOUT";//VALUE | KEY
 	    public final static String ONLINE_USERS="ONLINE_USERS"; //VALUE
 	    public final static String SEND_MESSAGE="SEND_MESSAGE"; //VALUE
-	    
 	    public final static String MESSAGES_SYNC="MESSAGES_SYNC"; //KEY 
-
-
 	    
 	    //PROTOCOLLO OPERAZIONE EFFETTUATA
 	    public final static String STATUS="STATUS"; //KEY
