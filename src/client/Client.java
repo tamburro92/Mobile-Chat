@@ -50,7 +50,7 @@ public class Client {
 							// memoria
 
 			JSONObject response = new JSONObject(reader.readLine());
-			System.out.println("LOGIN: " + response.getString(Code.STATUS).compareTo(Code.SUCCESS));
+			System.out.println("CLIENT RECEIVE: "+response);
 			if (response.getString(Code.STATUS).compareTo(Code.SUCCESS)==0)
 				isLogged=true;
 
@@ -65,6 +65,8 @@ public class Client {
 			writer.println(request);
 			writer.flush(); // flush forza l’invio di eventuali buffer in
 							// memoria
+			JSONObject response = new JSONObject(reader.readLine());
+			System.out.println("CLIENT RECEIVE: "+response);
 			isLogged=false;
 			socket.close();		
 
@@ -104,10 +106,6 @@ public class Client {
 
 		JSONArray array = new JSONArray(reader.readLine());
 		System.out.println("CLIENT RECEIVE: "+array);
-		System.out.println(array.length());
-		for (int i = 0; i < array.length(); i++) {
-			System.out.println(i + ": " + array.getJSONObject(i));
-		}
 		return array;
 
 	}
