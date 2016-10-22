@@ -89,7 +89,8 @@ public class ThreadedServerSocket extends Thread {
 
 	private void syncOldMessage() {
 		JSONArray response = new JSONArray();
-		response.put(this.messageToSyn);
+		for(JSONObject iesim: messageToSyn)
+		   response.put(iesim);
 		this.messageToSyn.clear();
 
 		System.out.println("SERVER SEND: " + response);
@@ -105,17 +106,12 @@ public class ThreadedServerSocket extends Thread {
 			String user = receivers.getString(i);
 			if (this.usersOnline.containsKey(user)) {
 				ThreadedServerSocket socketUser = this.usersOnline.get(user);
-				socketUser.saveMessageToSync(message.getString(Code.SENDER), message.getString(Code.MESSAGE));
+				socketUser.saveMessageToSync(message);
 			}
 		}
 	}
 
-	public void saveMessageToSync(String sender, String message) throws JSONException {
-		JSONObject response = new JSONObject();
-		response.put(Code.TYPE_MESSAGE, Code.SEND_MESSAGE);
-		response.put(Code.SENDER, sender);
-		response.put(Code.MESSAGE, message);
-		System.out.println("SERVER SEND: " + response);
+	public void saveMessageToSync(JSONObject response) throws JSONException {
 		messageToSyn.add(response);
 
 	}

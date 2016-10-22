@@ -33,7 +33,9 @@ public class Client {
 	public boolean isLogged(){
 		return isLogged;
 	}
-
+	public String getUserName(){
+		return userName;
+	}
 	public void login(String username) throws JSONException, IOException {
 		userName = username;
 		JSONObject request = new JSONObject();
@@ -91,7 +93,7 @@ public class Client {
 		socket.close();
 	}
 
-	public void updateMessage() throws IOException, JSONException {
+	public JSONArray updateMessage() throws IOException, JSONException {
 
 		JSONObject request = new JSONObject();
 		request.put(Code.TYPE_MESSAGE, Code.MESSAGES_SYNC);
@@ -99,9 +101,12 @@ public class Client {
 		writer.flush();
 
 		JSONArray array = new JSONArray(reader.readLine());
+		System.out.println("CLIENT RECEIVE: "+array);
+		System.out.println(array.length());
 		for (int i = 0; i < array.length(); i++) {
-			System.out.println(i + ": " + array.get(i));
+			System.out.println(i + ": " + array.getJSONObject(i));
 		}
+		return array;
 
 	}
 
@@ -109,6 +114,26 @@ public class Client {
 		JSONObject request = new JSONObject();
 		Set<String> users = new HashSet<String>();
 		users.add(user);
+		try {
+			request.put(Code.TYPE_MESSAGE, Code.SEND_MESSAGE);
+			request.put(Code.SENDER, this.userName);
+			request.put(Code.RECEIVERS, users);
+			request.put(Code.MESSAGE, message);
+
+			System.out.println("CLIENT SEND: " + request);
+			writer.println(request);
+			writer.flush(); // flush forza l’invio di eventuali buffer in
+							// memoria
+
+		} catch (JSONException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}
+
+	}
+	public void sendsMessage(Set<String> users, String message) {
+		JSONObject request = new JSONObject();
+
 		try {
 			request.put(Code.TYPE_MESSAGE, Code.SEND_MESSAGE);
 			request.put(Code.SENDER, this.userName);
