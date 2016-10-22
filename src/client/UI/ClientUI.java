@@ -30,6 +30,9 @@ import java.awt.List;
 import javax.swing.JList;
 import javax.swing.JRadioButton;
 import java.awt.Color;
+import javax.swing.AbstractListModel;
+import javax.swing.JScrollPane;
+import javax.swing.JTextPane;
 
 public class ClientUI {
 
@@ -43,6 +46,8 @@ public class ClientUI {
 	private JPanel panel;
 	private JPanel panel_1;
 	private JTextField warningField;
+	private JList usersOnlinelist;
+	private JButton btnSendMessage;
 
 	/**
 	 * Launch the application.
@@ -152,12 +157,8 @@ public class ClientUI {
 		tabbedPane.addTab("Utenti", null, panel_1, null);
 		panel_1.setLayout(null);
 		
-		JList usersOnline = new JList();
-		usersOnline.setBounds(239, 139, 83, -116);
-		panel_1.add(usersOnline);
-		
-		JButton btnRefresh = new JButton("refresh");
-		btnRefresh.addActionListener(new ActionListener() {
+		JButton btnRefreshUsersList = new JButton("refresh");
+		btnRefreshUsersList.addActionListener(new ActionListener() {
 			public void actionPerformed(ActionEvent e) {
 				try {
 					java.util.List<String> userOnlineList = client.getUserList();
@@ -165,15 +166,39 @@ public class ClientUI {
 					for(String user:userOnlineList){
 						listModel.addElement(user);						
 					}
-					usersOnline.setModel(listModel);
+					usersOnlinelist.setModel(listModel);
 				} catch (JSONException | IOException e1) {
 					// TODO Auto-generated catch block
 					e1.printStackTrace();
 				}
 			}
 		});
-		btnRefresh.setBounds(239, 163, 89, 23);
-		panel_1.add(btnRefresh);
+		btnRefreshUsersList.setBounds(261, 151, 89, 23);
+		panel_1.add(btnRefreshUsersList);
+		
+		usersOnlinelist = new JList();
+		usersOnlinelist.setBounds(224, 11, 169, 129);
+		panel_1.add(usersOnlinelist);
+		
+		btnSendMessage = new JButton("Send Message");
+		btnSendMessage.addActionListener(new ActionListener() {
+			public void actionPerformed(ActionEvent e) {
+				int[] index = usersOnlinelist.getSelectedIndices();
+				if(index.length==0){
+					warningField.setText("NESSUN UTENTE SELEZIONATO");
+				}else if(index.length==1){
+					warningField.setText("CHAT SINGOLA: "+usersOnlinelist.getModel().getElementAt(index[0]));
+				}else if(index.length>1){
+					String warning="CHAT MULTIPLA:";
+					for(int i=0;i<index.length;i++)
+						warning+=" "+usersOnlinelist.getModel().getElementAt(index[i]);
+					warningField.setText(warning);
+
+				}
+			}
+		});
+		btnSendMessage.setBounds(49, 151, 101, 23);
+		panel_1.add(btnSendMessage);
 		
 		warningField = new JTextField();
 		warningField.setBounds(0, 230, 434, 31);
