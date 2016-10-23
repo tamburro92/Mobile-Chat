@@ -65,7 +65,6 @@ public class ClientUI {
 
 	private Set<String> destinationUsers;
 	private JLabel lblChatWith;
-	private JButton btnRefreshMessage;
 	private JButton btnLogout;
 	private JLabel lblSelectOneOr;
 
@@ -103,6 +102,7 @@ public class ClientUI {
 	 */
 	private void initialize() {
 		frame = new JFrame();
+		frame.setResizable(false);
 		frame.setBounds(100, 100, 450, 300);
 		frame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
 		frame.getContentPane().setLayout(null);
@@ -212,28 +212,6 @@ public class ClientUI {
 		tabbedPane.setEnabledAt(1, false);
 		usersPanel.setLayout(null);
 
-		JButton btnRefreshUsersList = new JButton("Refresh Users");
-		btnRefreshUsersList.setEnabled(false);
-		btnRefreshUsersList.setVisible(false); //BOTTONO CHE DOVRA ESSERE CANCELLATO, DA MANTENRE PER DEBUG
-		btnRefreshUsersList.addActionListener(new ActionListener() {
-			public void actionPerformed(ActionEvent e) {
-				try {
-					java.util.List<String> userOnlineList = client.getUserList();
-					DefaultListModel<String> listModel = new DefaultListModel<String>();
-					for (String user : userOnlineList) {
-						listModel.addElement(user);
-					}
-					usersOnlinelist.setModel(listModel);
-				} catch (JSONException e1) {
-
-				} catch (IOException e1) {
-					warningField.setText("ERRORE I/0");
-				}
-			}
-		});
-		btnRefreshUsersList.setBounds(261, 151, 108, 23);
-		usersPanel.add(btnRefreshUsersList);
-
 		usersOnlinelist = new JList<String>();
 		DefaultListModel<String> listModel = new DefaultListModel<String>();
 		usersOnlinelist.setModel(listModel);
@@ -267,11 +245,11 @@ public class ClientUI {
 				}
 			}
 		});
-		btnSendMessage.setBounds(49, 151, 101, 23);
+		btnSendMessage.setBounds(49, 151, 121, 23);
 		usersPanel.add(btnSendMessage);
 
-		lblSelectOneOr = new JLabel("Select one or more users:");
-		lblSelectOneOr.setBounds(70, 61, 130, 23);
+		lblSelectOneOr = new JLabel("<html><center>Select one or more users: <br>[use key: CTRL]</center></html>");
+		lblSelectOneOr.setBounds(60, 47, 140, 57);
 		usersPanel.add(lblSelectOneOr);
 
 		messagesPanel = new JPanel();
@@ -301,38 +279,12 @@ public class ClientUI {
 				messagesPane.setText(txt + client.getUserName() + ": " + messageField.getText() + "\n");
 			}
 		});
-		sendMessageBtn.setBounds(279, 152, 101, 23);
+		sendMessageBtn.setBounds(279, 152, 116, 23);
 		messagesPanel.add(sendMessageBtn);
 
 		lblChatWith = new JLabel("Chat with: ");
 		lblChatWith.setBounds(27, -4, 392, 28);
 		messagesPanel.add(lblChatWith);
-
-		btnRefreshMessage = new JButton("Refresh Message");
-		btnRefreshMessage.setVisible(false); //NASCONDIAMO ALL'UTENTE //DA CANCELLARE DOPO 
-		btnRefreshMessage.setEnabled(false);
-		btnRefreshMessage.addActionListener(new ActionListener() {
-			public void actionPerformed(ActionEvent e) {
-				try {
-					JSONArray arrayMSG = client.updateMessage();
-					for (int i = 0; i < arrayMSG.length(); i++) {
-						String sender = arrayMSG.getJSONObject(i).getString(Code.SENDER);
-						arrayMSG.getJSONObject(i).get(Code.RECEIVERS);
-						String txt = messagesPane.getText();
-						messagesPane.setText(
-								txt + sender + ": " + arrayMSG.getJSONObject(i).getString(Code.MESSAGE) + "\n");
-					}
-				} catch (IOException e1) {
-					warningField.setText("ERRORE I/0");
-
-				} catch (JSONException e1) {
-					// TODO Auto-generated catch block
-					/// e1.printStackTrace();
-				}
-			}
-		});
-		btnRefreshMessage.setBounds(279, 70, 120, 23);
-		messagesPanel.add(btnRefreshMessage);
 
 		warningField = new JTextField();
 		warningField.setEditable(false);
