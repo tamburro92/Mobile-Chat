@@ -16,7 +16,7 @@ import protocol.Code;
 
 import org.json.*;
 
-public class Client {
+public  class Client {
 
 	private Socket socket;
 	private PrintWriter writer;
@@ -36,7 +36,7 @@ public class Client {
 	public String getUserName(){
 		return userName;
 	}
-	public void login(String username) throws JSONException, IOException {
+	public synchronized void login(String username) throws JSONException, IOException {
 		if(username.isEmpty())
 			return;
 		this.userName = username;
@@ -56,7 +56,7 @@ public class Client {
 
 	}
 
-	public void logout() throws JSONException, IOException {
+	public synchronized void logout() throws JSONException, IOException {
 		JSONObject request = new JSONObject();
 			request.put(Code.TYPE_MESSAGE, Code.LOGOUT);
 			request.put(Code.USER_NAME, this.userName);
@@ -72,7 +72,7 @@ public class Client {
 
 	}
 
-	public List<String> getUserList() throws JSONException, IOException {
+	public synchronized List<String> getUserList() throws JSONException, IOException {
 		List<String> listUser=new LinkedList();
 		JSONObject request = new JSONObject();
 		request.put(Code.TYPE_MESSAGE, Code.ONLINE_USERS);
@@ -93,11 +93,11 @@ public class Client {
 
 	}
 
-	public void closeSocket() throws IOException {
+	public synchronized void closeSocket() throws IOException {
 		socket.close();
 	}
 
-	public JSONArray updateMessage() throws IOException, JSONException {
+	public synchronized JSONArray updateMessage() throws IOException, JSONException {
 
 		JSONObject request = new JSONObject();
 		request.put(Code.TYPE_MESSAGE, Code.MESSAGES_SYNC);
@@ -110,7 +110,7 @@ public class Client {
 
 	}
 
-	public void sendsMessage(String user, String message) {
+	public synchronized void sendsMessage(String user, String message) {
 		JSONObject request = new JSONObject();
 		Set<String> users = new HashSet<String>();
 		users.add(user);
@@ -131,7 +131,7 @@ public class Client {
 		}
 
 	}
-	public void sendsMessage(Set<String> users, String message) {
+	public synchronized void sendsMessage(Set<String> users, String message) {
 		JSONObject request = new JSONObject();
 
 		try {
