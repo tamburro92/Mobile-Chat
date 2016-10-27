@@ -17,6 +17,7 @@ import java.net.UnknownHostException;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.LinkedList;
+import java.util.Map;
 import java.util.Set;
 import java.awt.event.ActionEvent;
 import javax.swing.JTextField;
@@ -25,6 +26,7 @@ import org.json.JSONArray;
 import org.json.JSONException;
 
 import client.Client;
+import client.GroupUserList;
 import protocol.Code;
 
 import javax.swing.JLabel;
@@ -43,6 +45,11 @@ import javax.swing.JScrollPane;
 import javax.swing.JTextPane;
 import javax.swing.JScrollBar;
 import javax.swing.ScrollPaneConstants;
+import javax.swing.event.ListSelectionListener;
+import javax.swing.event.ListSelectionEvent;
+import javax.swing.ListSelectionModel;
+import java.awt.event.WindowAdapter;
+import java.awt.event.WindowEvent;
 
 public class ClientUI {
 
@@ -71,6 +78,11 @@ public class ClientUI {
 	Timer timerUpdateListUser;
 	Timer timerUpdateMessage;
 	private JScrollPane scrollPane;
+	private JList<GroupUserList> usersGrouplist;
+
+	private HashMap<GroupUserList, String> mapMessages;
+	private Set<GroupUserList> groups;
+	private JScrollPane scrollPane_1;
 
 	/**
 	 * Launch the application.
@@ -93,6 +105,7 @@ public class ClientUI {
 	 * Create the application.
 	 */
 	public ClientUI() {
+		mapMessages = new HashMap<>();
 		initialize();
 		initTimer();
 	}
@@ -102,6 +115,22 @@ public class ClientUI {
 	 */
 	private void initialize() {
 		frame = new JFrame();
+		frame.addWindowListener(new WindowAdapter() {
+			@Override
+			public void windowClosed(WindowEvent e) {
+				try {
+					client.logout();
+				} catch (IOException e1) {
+					warningField.setText("ERRORE I/0");
+					e1.printStackTrace();
+				} catch (JSONException e1) {
+					// TODO Auto-generated catch block
+					e1.printStackTrace();
+				} finally {
+					resetView();
+				}
+			}
+		});
 		frame.setResizable(false);
 		frame.setBounds(100, 100, 450, 300);
 		frame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
@@ -151,10 +180,6 @@ public class ClientUI {
 		btnLogout = new JButton("LOGOUT");
 		btnLogout.addActionListener(new ActionListener() {
 			public void actionPerformed(ActionEvent e) {
-				tabbedPane.setEnabledAt(1, false);
-				tabbedPane.setEnabledAt(2, false);
-				timerUpdateMessage.stop();
-				timerUpdateListUser.stop();
 				try {
 					client.logout();
 					warningField.setText("LOGOUT: SUCCESS");
@@ -166,6 +191,8 @@ public class ClientUI {
 													// quando il client non è
 													// stato creato
 					warningField.setText("ESEGUI IL LOGIN!!!");
+				} finally {
+					resetView();
 				}
 			}
 		});
@@ -183,8 +210,12 @@ public class ClientUI {
 					if (client.isLogged()) {
 						usersPanel.setEnabled(true);
 						tabbedPane.setEnabledAt(1, true);
+						tabbedPane.setEnabledAt(2, true);
+
 						timerUpdateListUser.start();// start timer to update
 													// list user automatically
+						timerUpdateMessage.start();
+
 						warningField.setText("LOGIN SUCCESS, Username: " + userName);
 					} else {
 						warningField.setText("LOGIN FAILED, Username: " + userName);
@@ -218,7 +249,7 @@ public class ClientUI {
 		usersOnlinelist.setBounds(224, 11, 169, 129);
 		usersPanel.add(usersOnlinelist);
 
-		btnSendMessage = new JButton("Send Message");
+		btnSendMessage = new JButton("Select Users");
 		btnSendMessage.addActionListener(new ActionListener() {
 			public void actionPerformed(ActionEvent e) {
 				destinationUsers = new HashSet<String>();
@@ -226,8 +257,6 @@ public class ClientUI {
 				if (index.length == 0) {
 					warningField.setText("NESSUN UTENTE SELEZIONATO");
 				} else {
-					tabbedPane.setEnabledAt(2, true);
-					timerUpdateMessage.start();
 					if (index.length == 1) {
 						warningField.setText("CHAT SINGOLA: " + usersOnlinelist.getModel().getElementAt(index[0]));
 						destinationUsers.add((String) usersOnlinelist.getModel().getElementAt(index[0]));
@@ -243,6 +272,10 @@ public class ClientUI {
 
 					}
 				}
+				GroupUserList group = new GroupUserList(destinationUsers);
+				if (!mapMessages.containsKey(group))
+					mapMessages.put(group, "");
+
 			}
 		});
 		btnSendMessage.setBounds(49, 151, 121, 23);
@@ -256,7 +289,7 @@ public class ClientUI {
 		tabbedPane.addTab("Chat", null, messagesPanel, null);
 		tabbedPane.setEnabledAt(2, false);
 		messagesPanel.setLayout(null);
-		
+
 		scrollPane = new JScrollPane();
 		scrollPane.setHorizontalScrollBarPolicy(ScrollPaneConstants.HORIZONTAL_SCROLLBAR_NEVER);
 		scrollPane.setBounds(27, 21, 207, 121);
@@ -274,24 +307,69 @@ public class ClientUI {
 		sendMessageBtn = new JButton("Send Message");
 		sendMessageBtn.addActionListener(new ActionListener() {
 			public void actionPerformed(ActionEvent e) {
-				client.sendsMessage(destinationUsers, messageField.getText());
-				String txt = messagesPane.getText();
-				messagesPane.setText(txt + client.getUserName() + ": " + messageField.getText() + "\n");
+				GroupUserList group = usersGrouplist.getSelectedValue();
+				client.sendsMessage(group, messageField.getText());
+
+				String toMap = mapMessages.get(group) + client.getUserName() + ": " + messageField.getText() + "\n";
+				messageField.setText("");
+				mapMessages.put(group, toMap);
+				updateGroupView();
+				updatePaneMessage();
 			}
 		});
 		sendMessageBtn.setBounds(279, 152, 116, 23);
 		messagesPanel.add(sendMessageBtn);
 
 		lblChatWith = new JLabel("Chat with: ");
-		lblChatWith.setBounds(27, -4, 392, 28);
+		lblChatWith.setBounds(289, 0, 59, 28);
 		messagesPanel.add(lblChatWith);
+		DefaultListModel<GroupUserList> listModelGroup = new DefaultListModel<GroupUserList>();
+
+		scrollPane_1 = new JScrollPane();
+		scrollPane_1.setBounds(279, 28, 140, 114);
+		messagesPanel.add(scrollPane_1);
+
+		usersGrouplist = new JList<GroupUserList>();
+		scrollPane_1.setViewportView(usersGrouplist);
+		usersGrouplist.setSelectionMode(ListSelectionModel.SINGLE_SELECTION);
+		usersGrouplist.addListSelectionListener(new ListSelectionListener() {
+			public void valueChanged(ListSelectionEvent arg0) {
+				updatePaneMessage();
+			}
+		});
+		usersGrouplist.setModel(listModelGroup);
 
 		warningField = new JTextField();
 		warningField.setEditable(false);
 		warningField.setBounds(0, 230, 434, 31);
 		frame.getContentPane().add(warningField);
 		warningField.setColumns(10);
+	}
 
+	private synchronized void updatePaneMessage() { 
+		GroupUserList group = usersGrouplist.getSelectedValue();
+		if (!messagesPane.getText().equals(mapMessages.get(group)))
+			messagesPane.setText(mapMessages.get(group));
+
+	}
+
+	private synchronized void updateGroupView() {
+		DefaultListModel<GroupUserList> listModel = (DefaultListModel<GroupUserList>) usersGrouplist.getModel();
+		for (GroupUserList iesim : mapMessages.keySet()) {
+			if (!listModel.contains(iesim))
+				listModel.addElement(iesim);
+		}
+		if (listModel.getSize() == 1)
+			if (mapMessages.size() == 1)
+				usersGrouplist.setSelectedIndex(0);
+	}
+
+	private void resetView() {
+		tabbedPane.setSelectedIndex(0);
+		tabbedPane.setEnabledAt(1, false);
+		tabbedPane.setEnabledAt(2, false);
+		timerUpdateMessage.stop();
+		timerUpdateListUser.stop();
 	}
 
 	private void initTimer() {
@@ -300,29 +378,32 @@ public class ClientUI {
 			public void actionPerformed(ActionEvent arg0) {
 				try {
 					java.util.List<String> userOnlineList = client.getUserList();
-					
+					userOnlineList.remove(client.getUserName());
+
 					DefaultListModel<String> listModel = (DefaultListModel<String>) usersOnlinelist.getModel();
-					//AGGIORNA LA LISTA DI UTENTI: (tutto questo per non ricreare la lista daccapo e quindi perdere il riferimento
-					//vedi gli elementi da rimuovere 
-					java.util.List<String> elemToRemove=new LinkedList();
-					for(int i=0;i<listModel.size();i++){
-						if(!userOnlineList.contains(listModel.getElementAt(i))){
+					// AGGIORNA LA LISTA DI UTENTI: (tutto questo per non
+					// ricreare la lista daccapo e quindi perdere il riferimento
+					// vedi gli elementi da rimuovere
+					java.util.List<String> elemToRemove = new LinkedList();
+					for (int i = 0; i < listModel.size(); i++) {
+						if (!userOnlineList.contains(listModel.getElementAt(i))) {
 							elemToRemove.add(listModel.getElementAt(i));
 						}
 
-					}//elimina gli elementi non online
-					for(String iesim: elemToRemove){
+					} // elimina gli elementi non online
+					for (String iesim : elemToRemove) {
 						listModel.removeElement(iesim);
 					}
-					//aggiungi i nuovi elementi
-					for(String iesim: userOnlineList){
-						if(!listModel.contains(iesim))
+					// aggiungi i nuovi elementi
+					for (String iesim : userOnlineList) {
+						if (!listModel.contains(iesim))
 							listModel.addElement(iesim);
 					}
 				} catch (JSONException e1) {
 
 				} catch (IOException e1) {
 					warningField.setText("ERRORE I/0");
+					resetView();
 				}
 			}
 		});
@@ -331,16 +412,22 @@ public class ClientUI {
 			@Override
 			public void actionPerformed(ActionEvent arg0) {
 				try {
-					JSONArray arrayMSG = client.updateMessage();
-					for (int i = 0; i < arrayMSG.length(); i++) {
-						String sender = arrayMSG.getJSONObject(i).getString(Code.SENDER);
-						arrayMSG.getJSONObject(i).get(Code.RECEIVERS);
-						String txt = messagesPane.getText();
-						messagesPane.setText(
-								txt + sender + ": " + arrayMSG.getJSONObject(i).getString(Code.MESSAGE) + "\n");
+					Map<GroupUserList, String> mapMessagesToUpdate = client.getMessagesFromServer();
+					for (GroupUserList group : mapMessagesToUpdate.keySet()) {
+						if (mapMessages.containsKey(group)) {
+							mapMessages.put(group, mapMessages.get(group) + mapMessagesToUpdate.get(group));
+						} else {
+							mapMessages.put(group, mapMessagesToUpdate.get(group));
+						}
 					}
+					updateGroupView();
+					updatePaneMessage();
+
+					// messagesPane.setText(mapMessages.toString());
+
 				} catch (IOException e1) {
 					warningField.setText("ERRORE I/0");
+					resetView();
 				} catch (JSONException e1) {
 
 				}
