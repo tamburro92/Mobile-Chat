@@ -205,8 +205,12 @@ public class ClientUI {
 					String ip = ipField.getText();
 					int port = Integer.parseInt(portField.getText());
 					String userName = userField.getText();
-					client = new Client(ip, port);
-					client.login(userName);
+					if(client==null)
+					   client = new Client(ip, port);
+					else 
+						client.startSocket(ip, port);
+						
+					client.login(userName);				
 					if (client.isLogged()) {
 						usersPanel.setEnabled(true);
 						tabbedPane.setEnabledAt(1, true);
@@ -308,13 +312,18 @@ public class ClientUI {
 		sendMessageBtn.addActionListener(new ActionListener() {
 			public void actionPerformed(ActionEvent e) {
 				GroupUserList group = usersGrouplist.getSelectedValue();
-				client.sendsMessage(group, messageField.getText());
+				if (group != null) {
+					client.sendsMessage(group, messageField.getText());
 
-				String toMap = mapMessages.get(group) + client.getUserName() + ": " + messageField.getText() + "\n";
-				messageField.setText("");
-				mapMessages.put(group, toMap);
-				updateGroupView();
-				updatePaneMessage();
+					String toMap = mapMessages.get(group) + client.getUserName() + ": " + messageField.getText() + "\n";
+					messageField.setText("");
+					mapMessages.put(group, toMap);
+					warningField.setText("MESSAGGIO INVIATO");
+					updateGroupView();
+					updatePaneMessage();
+				} else {
+					warningField.setText("SELEZIONA UN GRUPPO");
+				}
 			}
 		});
 		sendMessageBtn.setBounds(279, 152, 116, 23);
@@ -346,7 +355,7 @@ public class ClientUI {
 		warningField.setColumns(10);
 	}
 
-	private synchronized void updatePaneMessage() { 
+	private synchronized void updatePaneMessage() {
 		GroupUserList group = usersGrouplist.getSelectedValue();
 		if (!messagesPane.getText().equals(mapMessages.get(group)))
 			messagesPane.setText(mapMessages.get(group));

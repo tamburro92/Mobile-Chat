@@ -27,10 +27,16 @@ public class Client {
 	private boolean isLogged = false;
 
 	public Client(String ip, int port) throws UnknownHostException, IOException {
+		startSocket(ip, port);
+	}
+
+	public void startSocket(String ip, int port) throws UnknownHostException, IOException {
+		if (socket != null) // se ho aperto la socket prima devo cotrollare che
+							// sia chiusa.
+			socket.close();
 		socket = new Socket(ip, port);
 		writer = new PrintWriter(new OutputStreamWriter(socket.getOutputStream(), "UTF-8"));
 		reader = new BufferedReader(new InputStreamReader(socket.getInputStream(), "UTF-8"));
-
 	}
 
 	public boolean isLogged() {
@@ -116,9 +122,9 @@ public class Client {
 	}
 
 	public synchronized void sendsMessage(String user, String message) {
-		Set<String> users=new HashSet<String>();
+		Set<String> users = new HashSet<String>();
 		users.add(user);
-		sendsMessage(users,message);
+		sendsMessage(users, message);
 	}
 
 	public synchronized void sendsMessage(Set<String> users, String message) {
@@ -147,24 +153,26 @@ public class Client {
 	}
 
 	public synchronized Map<GroupUserList, String> getMessagesFromServer() throws IOException, JSONException {
-		Map<GroupUserList, String>  mapMessages=new HashMap<>();
+		Map<GroupUserList, String> mapMessages = new HashMap<>();
 		JSONArray arrayMSG = getMessagesRawFromServer();
 		for (int i = 0; i < arrayMSG.length(); i++) {
-			GroupUserList group=new GroupUserList();
+			GroupUserList group = new GroupUserList();
 			String sender = arrayMSG.getJSONObject(i).getString(Code.SENDER);
 			String message = sender + ": " + arrayMSG.getJSONObject(i).getString(Code.MESSAGE) + "\n";
-			
-			JSONArray receivers=(JSONArray) arrayMSG.getJSONObject(i).get(Code.RECEIVERS);
-			
+
+			JSONArray receivers = (JSONArray) arrayMSG.getJSONObject(i).get(Code.RECEIVERS);
+
 			group.addUser(sender);
-			for(int j=0;j<receivers.length();j++){
-				if(!receivers.getString(j).equals(userName)) //non aggiungiamo nel gruppo l'username
-				   group.addUser(receivers.getString(j));
+			for (int j = 0; j < receivers.length(); j++) {
+				if (!receivers.getString(j).equals(userName)) // non aggiungiamo
+																// nel gruppo
+																// l'username
+					group.addUser(receivers.getString(j));
 			}
-			if(mapMessages.containsKey(group)){
-				mapMessages.put(group, mapMessages.get(group)+message);
-			}else{
-				mapMessages.put(group,message);
+			if (mapMessages.containsKey(group)) {
+				mapMessages.put(group, mapMessages.get(group) + message);
+			} else {
+				mapMessages.put(group, message);
 			}
 		}
 		return mapMessages;
