@@ -21,7 +21,6 @@ public final class Code{
 	    // {"TYPE_MESSAGE":"LOGIN","USER_NAME":"username"}
 	    // {"TYPE_MESSAGE":"LOGOUT","USER_NAME":"Arturo"}
 
-
 	    
 	    //PROTOCOLLO LISTA UTENTI
 	    public final static String USERS="USERS"; //KEY
@@ -35,11 +34,4 @@ public final class Code{
 	    public final static String RECEIVERS="RECEIVERS"; //KEY
 	    // {"MESSAGE":"testo","TYPE_MESSAGE":"SEND_MESSAGE","SENDER":"Arturo","RECEIVERS":["Giovanni"]}
 	    // [{"MESSAGE":"testo","TYPE_MESSAGE":"SEND_MESSAGE","SENDER":"Arturo","RECEIVERS":["Giovanni"]}]
-
-	    
-	    
-
-
-	    
-
 }

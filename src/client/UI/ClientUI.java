@@ -81,7 +81,6 @@ public class ClientUI {
 	private JList<GroupUserList> usersGrouplist;
 
 	private HashMap<GroupUserList, String> mapMessages;
-	private Set<GroupUserList> groups;
 	private JScrollPane scrollPane_1;
 
 	/**
@@ -181,8 +180,12 @@ public class ClientUI {
 		btnLogout.addActionListener(new ActionListener() {
 			public void actionPerformed(ActionEvent e) {
 				try {
-					client.logout();
-					warningField.setText("LOGOUT: SUCCESS");
+					if (client.isLogged()) {
+						client.logout();
+						warningField.setText("LOGOUT: SUCCESS");
+					} else
+						warningField.setText("UTENTE GIA DISCONNESSO");
+
 				} catch (JSONException e1) {
 
 				} catch (IOException e1) {
@@ -205,12 +208,12 @@ public class ClientUI {
 					String ip = ipField.getText();
 					int port = Integer.parseInt(portField.getText());
 					String userName = userField.getText();
-					if(client==null)
-					   client = new Client(ip, port);
-					else 
+					if (client == null)
+						client = new Client(ip, port);
+					else
 						client.startSocket(ip, port);
-						
-					client.login(userName);				
+
+					client.login(userName);
 					if (client.isLogged()) {
 						usersPanel.setEnabled(true);
 						tabbedPane.setEnabledAt(1, true);
@@ -311,19 +314,23 @@ public class ClientUI {
 		sendMessageBtn = new JButton("Send Message");
 		sendMessageBtn.addActionListener(new ActionListener() {
 			public void actionPerformed(ActionEvent e) {
-				GroupUserList group = usersGrouplist.getSelectedValue();
-				if (group != null) {
-					client.sendsMessage(group, messageField.getText());
-
-					String toMap = mapMessages.get(group) + client.getUserName() + ": " + messageField.getText() + "\n";
-					messageField.setText("");
-					mapMessages.put(group, toMap);
-					warningField.setText("MESSAGGIO INVIATO");
-					updateGroupView();
-					updatePaneMessage();
-				} else {
-					warningField.setText("SELEZIONA UN GRUPPO");
+				if (messageField.getText().equals("")) {
+					warningField.setText("INSERISCI TESTO");
+					return;
 				}
+				GroupUserList group = usersGrouplist.getSelectedValue();
+				if (group == null) {
+					warningField.setText("SELEZIONA UN GRUPPO");
+					return;
+				}
+				client.sendsMessage(group, messageField.getText());
+				String toMap = mapMessages.get(group) + client.getUserName() + ": " + messageField.getText() + "\n";
+				messageField.setText("");
+				mapMessages.put(group, toMap);
+				updateGroupView();
+				updatePaneMessage();
+				warningField.setText("MESSAGGIO INVIATO");
+
 			}
 		});
 		sendMessageBtn.setBounds(279, 152, 116, 23);
@@ -343,6 +350,7 @@ public class ClientUI {
 		usersGrouplist.setSelectionMode(ListSelectionModel.SINGLE_SELECTION);
 		usersGrouplist.addListSelectionListener(new ListSelectionListener() {
 			public void valueChanged(ListSelectionEvent arg0) {
+				updateGroupView();
 				updatePaneMessage();
 			}
 		});
@@ -377,6 +385,7 @@ public class ClientUI {
 		tabbedPane.setSelectedIndex(0);
 		tabbedPane.setEnabledAt(1, false);
 		tabbedPane.setEnabledAt(2, false);
+		this.mapMessages.clear();
 		timerUpdateMessage.stop();
 		timerUpdateListUser.stop();
 	}
@@ -393,7 +402,7 @@ public class ClientUI {
 					// AGGIORNA LA LISTA DI UTENTI: (tutto questo per non
 					// ricreare la lista daccapo e quindi perdere il riferimento
 					// vedi gli elementi da rimuovere
-					java.util.List<String> elemToRemove = new LinkedList();
+					java.util.List<String> elemToRemove = new LinkedList<String>();
 					for (int i = 0; i < listModel.size(); i++) {
 						if (!userOnlineList.contains(listModel.getElementAt(i))) {
 							elemToRemove.add(listModel.getElementAt(i));
@@ -431,9 +440,6 @@ public class ClientUI {
 					}
 					updateGroupView();
 					updatePaneMessage();
-
-					// messagesPane.setText(mapMessages.toString());
-
 				} catch (IOException e1) {
 					warningField.setText("ERRORE I/0");
 					resetView();

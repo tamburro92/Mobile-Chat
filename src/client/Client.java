@@ -31,8 +31,7 @@ public class Client {
 	}
 
 	public void startSocket(String ip, int port) throws UnknownHostException, IOException {
-		if (socket != null) // se ho aperto la socket prima devo cotrollare che
-							// sia chiusa.
+		if (socket != null) // se ho aperto la socket prima devo cotrollare che sia chiusa.
 			socket.close();
 		socket = new Socket(ip, port);
 		writer = new PrintWriter(new OutputStreamWriter(socket.getOutputStream(), "UTF-8"));
@@ -84,7 +83,7 @@ public class Client {
 	}
 
 	public synchronized List<String> getUserList() throws JSONException, IOException {
-		List<String> listUser = new LinkedList();
+		List<String> listUser = new LinkedList<String>();
 		JSONObject request = new JSONObject();
 		request.put(Code.TYPE_MESSAGE, Code.ONLINE_USERS);
 
