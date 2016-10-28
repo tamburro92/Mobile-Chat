@@ -71,7 +71,6 @@ public class ClientUI {
 	private JTextField messageField;
 	private JButton sendMessageBtn;
 
-	private Set<String> destinationUsers;
 	private JLabel lblChatWith;
 	private JButton btnLogout;
 	private JLabel lblSelectOneOr;
@@ -262,7 +261,7 @@ public class ClientUI {
 		btnSendMessage = new JButton("Select Users");
 		btnSendMessage.addActionListener(new ActionListener() {
 			public void actionPerformed(ActionEvent e) {
-				destinationUsers = new HashSet<String>();
+				Set<String> destinationUsers = new HashSet<String>();
 				int[] index = usersOnlinelist.getSelectedIndices();
 				if (index.length == 0) {
 					warningField.setText("NESSUN UTENTE SELEZIONATO");
