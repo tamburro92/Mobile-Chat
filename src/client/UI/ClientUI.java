@@ -14,6 +14,7 @@ import java.awt.event.ActionListener;
 import java.io.IOException;
 import java.net.ConnectException;
 import java.net.UnknownHostException;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.LinkedList;
@@ -79,8 +80,9 @@ public class ClientUI {
 	Timer timerUpdateMessage;
 	private JScrollPane scrollPane;
 	private JList<GroupUserList> usersGrouplist;
+	DefaultListModel<GroupUserList> listModelGroup;
 
-	private HashMap<GroupUserList, String> mapMessages;
+	private Map<GroupUserList, String> mapMessages;
 	private JScrollPane scrollPane_1;
 
 	/**
@@ -104,7 +106,8 @@ public class ClientUI {
 	 * Create the application.
 	 */
 	public ClientUI() {
-		mapMessages = new HashMap<>();
+		// sincoronizzata
+		mapMessages = Collections.synchronizedMap(new HashMap<GroupUserList, String>());
 		initialize();
 		initTimer();
 	}
@@ -280,8 +283,10 @@ public class ClientUI {
 					}
 				}
 				GroupUserList group = new GroupUserList(destinationUsers);
-				if (!mapMessages.containsKey(group))
-					mapMessages.put(group, "");
+				synchronized (mapMessages) {
+					if (!mapMessages.containsKey(group))
+						mapMessages.put(group, "");
+				}
 
 			}
 		});
@@ -323,13 +328,15 @@ public class ClientUI {
 					warningField.setText("SELEZIONA UN GRUPPO");
 					return;
 				}
-				client.sendsMessage(group, messageField.getText());
-				String toMap = mapMessages.get(group) + client.getUserName() + ": " + messageField.getText() + "\n";
-				messageField.setText("");
-				mapMessages.put(group, toMap);
-				updateGroupView();
-				updatePaneMessage();
-				warningField.setText("MESSAGGIO INVIATO");
+				synchronized (mapMessages) {
+					client.sendsMessage(group, messageField.getText());
+					String toMap = mapMessages.get(group) + client.getUserName() + ": " + messageField.getText() + "\n";
+					messageField.setText("");
+					mapMessages.put(group, toMap);
+					updateGroupView();
+					updatePaneMessage();
+					warningField.setText("MESSAGGIO INVIATO");
+				}
 
 			}
 		});
@@ -339,7 +346,7 @@ public class ClientUI {
 		lblChatWith = new JLabel("Chat with: ");
 		lblChatWith.setBounds(289, 0, 59, 28);
 		messagesPanel.add(lblChatWith);
-		DefaultListModel<GroupUserList> listModelGroup = new DefaultListModel<GroupUserList>();
+		listModelGroup = new DefaultListModel<GroupUserList>();
 
 		scrollPane_1 = new JScrollPane();
 		scrollPane_1.setBounds(279, 28, 140, 114);
@@ -363,14 +370,14 @@ public class ClientUI {
 		warningField.setColumns(10);
 	}
 
-	private synchronized void updatePaneMessage() {
+	private void updatePaneMessage() {
 		GroupUserList group = usersGrouplist.getSelectedValue();
 		if (!messagesPane.getText().equals(mapMessages.get(group)))
 			messagesPane.setText(mapMessages.get(group));
 
 	}
 
-	private synchronized void updateGroupView() {
+	private void  updateGroupView() {
 		DefaultListModel<GroupUserList> listModel = (DefaultListModel<GroupUserList>) usersGrouplist.getModel();
 		for (GroupUserList iesim : mapMessages.keySet()) {
 			if (!listModel.contains(iesim))
@@ -386,6 +393,8 @@ public class ClientUI {
 		tabbedPane.setEnabledAt(1, false);
 		tabbedPane.setEnabledAt(2, false);
 		this.mapMessages.clear();
+		listModelGroup = new DefaultListModel<GroupUserList>();
+		usersGrouplist.setModel(listModelGroup);
 		timerUpdateMessage.stop();
 		timerUpdateListUser.stop();
 	}
@@ -430,16 +439,18 @@ public class ClientUI {
 			@Override
 			public void actionPerformed(ActionEvent arg0) {
 				try {
-					Map<GroupUserList, String> mapMessagesToUpdate = client.getMessagesFromServer();
-					for (GroupUserList group : mapMessagesToUpdate.keySet()) {
-						if (mapMessages.containsKey(group)) {
-							mapMessages.put(group, mapMessages.get(group) + mapMessagesToUpdate.get(group));
-						} else {
-							mapMessages.put(group, mapMessagesToUpdate.get(group));
+					synchronized (mapMessages) {
+						Map<GroupUserList, String> mapMessagesToUpdate = client.getMessagesFromServer();
+						for (GroupUserList group : mapMessagesToUpdate.keySet()) {
+							if (mapMessages.containsKey(group)) {
+								mapMessages.put(group, mapMessages.get(group) + mapMessagesToUpdate.get(group));
+							} else {
+								mapMessages.put(group, mapMessagesToUpdate.get(group));
+							}
 						}
+						updateGroupView();
+						updatePaneMessage();
 					}
-					updateGroupView();
-					updatePaneMessage();
 				} catch (IOException e1) {
 					warningField.setText("ERRORE I/0");
 					resetView();

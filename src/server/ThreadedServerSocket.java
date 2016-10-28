@@ -6,6 +6,7 @@ import java.io.InputStreamReader;
 import java.io.OutputStreamWriter;
 import java.io.PrintWriter;
 import java.net.Socket;
+import java.util.Collections;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
@@ -21,12 +22,13 @@ public class ThreadedServerSocket extends Thread {
 	private PrintWriter writer;
 	private String userName;
 	private List<JSONObject> messageToSyn;
-	private boolean clientLogout=false;
+	private boolean clientLogout = false;
 
 	public ThreadedServerSocket(Socket s, Map<String, ThreadedServerSocket> usersOnline) {
 		this.socket = s;
 		this.usersOnline = usersOnline;
-		this.messageToSyn = new LinkedList<JSONObject>();
+		// sincronizzata poichè possiamo avere accessi concorrenti
+		this.messageToSyn = Collections.synchronizedList(new LinkedList<JSONObject>());
 
 	}
 
@@ -37,7 +39,7 @@ public class ThreadedServerSocket extends Thread {
 
 			while (!clientLogout) {
 				String messageString = reader.readLine();
-				
+
 				JSONObject message = new JSONObject(messageString);
 				System.out.println("SERVER RECEIVE: " + message);
 
@@ -69,16 +71,15 @@ public class ThreadedServerSocket extends Thread {
 			// e.printStackTrace();
 		} catch (JSONException e) {
 			System.out.println("ECCEZIONE formato messaggi");
-			// TODO Auto-generated catch block
-			// e.printStackTrace();
-		} 
-		catch(NullPointerException e){//si verifica quando il client si disconnette senza fare il logout   
-			//ed la reader.readLine() del server restituisce NULL
+
+		} catch (NullPointerException e) {// si verifica quando il client si
+											// disconnette senza fare il logout
+			// ed la reader.readLine() del server restituisce NULL
 			System.out.println("Client Disconnesso Improvvisamente");
 
-		}catch(InterruptedException e){}
-		finally {
-			try {//LOGOUT e CLOSE SOCKET
+		} catch (InterruptedException e) {
+		} finally {
+			try {// LOGOUT e CLOSE SOCKET
 				if (usersOnline.containsKey(this.userName))
 					usersOnline.remove(this.userName);
 				socket.close();
@@ -90,9 +91,11 @@ public class ThreadedServerSocket extends Thread {
 
 	private void syncOldMessage() {
 		JSONArray response = new JSONArray();
-		for(JSONObject iesim: messageToSyn)
-		   response.put(iesim);
-		this.messageToSyn.clear();
+		synchronized (messageToSyn) { // acquisiamo il lock per l'iterazione
+			for (JSONObject iesim : messageToSyn)
+				response.put(iesim);
+			this.messageToSyn.clear();
+		}
 
 		System.out.println("SERVER SEND: " + response);
 
@@ -105,10 +108,14 @@ public class ThreadedServerSocket extends Thread {
 		JSONArray receivers = message.getJSONArray(Code.RECEIVERS);
 		for (int i = 0; i < receivers.length(); i++) {
 			String user = receivers.getString(i);
-			if (this.usersOnline.containsKey(user)) {
-				ThreadedServerSocket socketUser = this.usersOnline.get(user);
-				socketUser.saveMessageToSync(message);
+			synchronized (this.usersOnline) { //otteniamo il lock
+				if (this.usersOnline.containsKey(user)) {
+					ThreadedServerSocket socketUser = this.usersOnline.get(user);
+					socketUser.saveMessageToSync(message);
+				}
+
 			}
+
 		}
 	}
 
@@ -157,7 +164,7 @@ public class ThreadedServerSocket extends Thread {
 
 		writer.println(response);
 		writer.flush();
-		clientLogout=true;
+		clientLogout = true;
 	}
 
 }
