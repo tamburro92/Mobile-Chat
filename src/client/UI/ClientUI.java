@@ -377,7 +377,7 @@ public class ClientUI {
 
 	}
 
-	private void  updateGroupView() {
+	private void updateGroupView() {
 		DefaultListModel<GroupUserList> listModel = (DefaultListModel<GroupUserList>) usersGrouplist.getModel();
 		for (GroupUserList iesim : mapMessages.keySet()) {
 			if (!listModel.contains(iesim))
